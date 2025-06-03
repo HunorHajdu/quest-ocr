@@ -195,8 +195,6 @@ $RECYCLE.BIN/
 *.swo
 *~
 
-# Quest OCR specific
-# Training results
 results_*/
 logs/
 data/
@@ -215,7 +213,6 @@ plots/
 metrics/
 
 # Corpus data
-*.txt
 *.gz
 
 # Experimental notebooks
