@@ -15,14 +15,13 @@ import torchvision.transforms as transforms
 
 # Import configuration
 from config import (
-    CORPUS_URLS, 
-    SIMPLE_PARAMS, 
-    HIERARCHICAL_PARAMS, 
+    CORPUS_URLS,
+    SIMPLE_PARAMS,
+    HIERARCHICAL_PARAMS,
     ARCHITECTURES,
     CHAR_TO_IDX,
     IDX_TO_CHAR,
     MAX_VOCAB_SIZE,
-    MAX_NGRAM_VOCAB_SIZE
 )
 
 # Import utilities
@@ -32,11 +31,11 @@ from corpus_utils import download_corpus_files, build_vocabulary_from_corpus
 from models import OCRModel, HierarchicalOCRModel
 
 # Import datasets
-from datasets import (
-    CorpusDataGenerator, 
-    OCRDataset, 
-    HierarchicalDataGenerator, 
-    HierarchicalOCRDataset
+from dataset_generators import (
+    CorpusDataGenerator,
+    OCRDataset,
+    HierarchicalDataGenerator,
+    HierarchicalOCRDataset,
 )
 
 # Import trainers
@@ -77,7 +76,7 @@ MODEL_TYPE = "simple"  # Options: "simple" or "hierarchical"
 def setup_simple_model_components(corpus_files):
     """Setup components for simple OCR model"""
     params = SIMPLE_PARAMS
-    
+
     # Create data generator
     data_gen = CorpusDataGenerator(
         max_length=params["max_length"],
@@ -86,23 +85,23 @@ def setup_simple_model_components(corpus_files):
         language=params["language"],
         corpus_files=corpus_files,
     )
-    
+
     return data_gen, params
 
 
 def setup_hierarchical_model_components(corpus_files):
     """Setup components for hierarchical OCR model"""
     params = HIERARCHICAL_PARAMS
-    
+
     # Build vocabulary from corpus
     print("Building vocabulary from corpus files...")
     word_to_idx, idx_to_word, ngram_to_idx, idx_to_ngram = build_vocabulary_from_corpus(
         corpus_files, max_vocab_size=MAX_VOCAB_SIZE
     )
-    
+
     print(f"Word vocabulary size: {len(word_to_idx)}")
     print(f"N-gram vocabulary size: {len(ngram_to_idx)}")
-    
+
     # Create data generator
     data_gen = HierarchicalDataGenerator(
         max_length=params["max_length"],
@@ -113,7 +112,7 @@ def setup_hierarchical_model_components(corpus_files):
         word_to_idx=word_to_idx,
         ngram_to_idx=ngram_to_idx,
     )
-    
+
     return data_gen, params, word_to_idx, idx_to_word, ngram_to_idx, idx_to_ngram
 
 
@@ -121,23 +120,20 @@ def create_model_and_trainer(architecture, model_type, additional_params=None):
     """Create model and trainer based on type and architecture"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
-    
+
     if model_type == "simple":
         params = SIMPLE_PARAMS
         print(f"Creating simple model with {architecture} architecture...")
         model = OCRModel(
-            input_channels=1, 
-            architecture=architecture, 
-            num_layers=4, 
-            hidden_size=512
+            input_channels=1, architecture=architecture, num_layers=4, hidden_size=512
         )
         trainer = OCRTrainer(model, max_length=params["max_length"], device=device)
-        
+
     elif model_type == "hierarchical":
         params = HIERARCHICAL_PARAMS
         word_to_idx = additional_params["word_to_idx"]
         ngram_to_idx = additional_params["ngram_to_idx"]
-        
+
         print(f"Creating hierarchical model with {architecture} architecture...")
         print(f"Creating hierarchical model with {architecture} architecture...")
         model = HierarchicalOCRModel(
@@ -149,11 +145,13 @@ def create_model_and_trainer(architecture, model_type, additional_params=None):
             num_layers=4,
             hidden_size=512,
         )
-        trainer = HierarchicalOCRTrainer(model, max_length=params["max_length"], device=device)
-    
+        trainer = HierarchicalOCRTrainer(
+            model, max_length=params["max_length"], device=device
+        )
+
     else:
         raise ValueError(f"Unknown model type: {model_type}")
-    
+
     return model, trainer, params
 
 
@@ -162,8 +160,12 @@ def create_datasets_and_loaders(data_gen, params, model_type):
     print("Generating training and validation data...")
     data_gen_start = time.time()
 
-    train_data = data_gen.generate_batch(batch_size=params["train_samples"], method="corpus")
-    val_data = data_gen.generate_batch(batch_size=params["val_samples"], method="corpus")
+    train_data = data_gen.generate_batch(
+        batch_size=params["train_samples"], method="corpus"
+    )
+    val_data = data_gen.generate_batch(
+        batch_size=params["val_samples"], method="corpus"
+    )
 
     data_gen_time = time.time() - data_gen_start
     print(f"Data generation completed in {str(timedelta(seconds=int(data_gen_time)))}")
@@ -218,7 +220,9 @@ def create_datasets_and_loaders(data_gen, params, model_type):
     return train_dataloader, val_dataloader
 
 
-def save_model(model, trainer, architecture, model_type, model_path, additional_data=None):
+def save_model(
+    model, trainer, architecture, model_type, model_path, additional_data=None
+):
     """Save model with all necessary information"""
     save_data = {
         "model_state_dict": model.state_dict(),
@@ -227,10 +231,10 @@ def save_model(model, trainer, architecture, model_type, model_path, additional_
         "char_to_idx": CHAR_TO_IDX,
         "idx_to_char": IDX_TO_CHAR,
     }
-    
+
     if additional_data:
         save_data.update(additional_data)
-    
+
     torch.save(save_data, model_path)
     print(f"Model saved successfully to {model_path}")
 
@@ -238,16 +242,13 @@ def save_model(model, trainer, architecture, model_type, model_path, additional_
 def load_model(model_path, architecture, model_type, device):
     """Load model from file"""
     checkpoint = torch.load(model_path, map_location=device)
-    
+
     if model_type == "simple":
         model = OCRModel(
-            input_channels=1, 
-            architecture=architecture, 
-            num_layers=4, 
-            hidden_size=512
+            input_channels=1, architecture=architecture, num_layers=4, hidden_size=512
         )
         trainer = OCRTrainer(model, max_length=50, device=device)
-        
+
     else:  # hierarchical
         model = HierarchicalOCRModel(
             input_channels=1,
@@ -259,7 +260,7 @@ def load_model(model_path, architecture, model_type, device):
             hidden_size=512,
         )
         trainer = HierarchicalOCRTrainer(model, max_length=50, device=device)
-    
+
     model.load_state_dict(checkpoint["model_state_dict"])
     return model, trainer, checkpoint
 
@@ -268,7 +269,7 @@ def plot_training_history(history, architecture, model_type, plots_dir):
     """Plot and save training history"""
     try:
         import matplotlib.pyplot as plt
-        
+
         plt.figure(figsize=(15, 8))
 
         plt.subplot(2, 2, 1)
@@ -295,7 +296,7 @@ def plot_training_history(history, architecture, model_type, plots_dir):
             plt.ylabel("CER")
             plt.legend()
             plt.title("Character Error Rate by Language")
-            
+
         else:  # hierarchical
             plt.subplot(2, 2, 2)
             plt.plot(history["overall_f1"], label="Overall F1")
@@ -325,6 +326,7 @@ def plot_training_history(history, architecture, model_type, plots_dir):
             try:
                 if len(history["epoch_times"]) > 1:
                     import numpy as np
+
                     x = np.array(range(len(history["epoch_times"])))
                     y = np.array(history["epoch_times"])
 
@@ -346,7 +348,7 @@ def plot_training_history(history, architecture, model_type, plots_dir):
         plt.savefig(history_plot_path, dpi=150)
         plt.close()
         print(f"Training history plot saved to {history_plot_path}")
-        
+
     except Exception as e:
         print(f"Error creating training history plot: {e}")
 
@@ -370,9 +372,9 @@ def main(should_train=True, specific_arch=None, path=None):
         os.makedirs(base_results_dir)
         print(f"Created results directory: {base_results_dir}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"RUNNING OCR SYSTEM - MODEL TYPE: {MODEL_TYPE.upper()}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Track performance metrics for each architecture
     performance_metrics = {}
@@ -385,7 +387,9 @@ def main(should_train=True, specific_arch=None, path=None):
         if specific_arch in architectures:
             architectures = [specific_arch]
         else:
-            print(f"Unknown architecture '{specific_arch}'. Must be one of: {', '.join(architectures)}")
+            print(
+                f"Unknown architecture '{specific_arch}'. Must be one of: {', '.join(architectures)}"
+            )
             return
 
     # Download corpus files
@@ -397,14 +401,16 @@ def main(should_train=True, specific_arch=None, path=None):
         data_gen, params = setup_simple_model_components(corpus_files)
         additional_model_params = None
     elif MODEL_TYPE == "hierarchical":
-        data_gen, params, word_to_idx, idx_to_word, ngram_to_idx, idx_to_ngram = setup_hierarchical_model_components(corpus_files)
+        data_gen, params, word_to_idx, idx_to_word, ngram_to_idx, idx_to_ngram = (
+            setup_hierarchical_model_components(corpus_files)
+        )
         additional_model_params = {
             "word_to_idx": word_to_idx,
             "idx_to_word": idx_to_word,
             "ngram_to_idx": ngram_to_idx,
             "idx_to_ngram": idx_to_ngram,
         }
-        
+
         # Save vocabulary for later use
         vocab_dir = os.path.join(base_results_dir, "vocabulary")
         if not os.path.exists(vocab_dir):
@@ -432,7 +438,9 @@ def main(should_train=True, specific_arch=None, path=None):
 
     # Generate data once and reuse for all architectures
     if should_train:
-        train_dataloader, val_dataloader = create_datasets_and_loaders(data_gen, params, MODEL_TYPE)
+        train_dataloader, val_dataloader = create_datasets_and_loaders(
+            data_gen, params, MODEL_TYPE
+        )
 
     # Loop through each architecture
     for architecture in architectures:
@@ -456,7 +464,9 @@ def main(should_train=True, specific_arch=None, path=None):
                 os.makedirs(directory)
 
         # Define model path in the new directory structure
-        model_path = os.path.join(models_dir, f"{MODEL_TYPE}_ocr_model_{architecture}.pth")
+        model_path = os.path.join(
+            models_dir, f"{MODEL_TYPE}_ocr_model_{architecture}.pth"
+        )
 
         print(f"\n{'=' * 50}")
         print(f"{MODEL_TYPE.upper()} ARCHITECTURE: {architecture.upper()}")
@@ -472,29 +482,38 @@ def main(should_train=True, specific_arch=None, path=None):
             print("Starting training...")
             train_start_time = time.time()
 
-            history = trainer.train(train_dataloader, val_dataloader, epochs=current_params["epochs"])
+            history = trainer.train(
+                train_dataloader, val_dataloader, epochs=current_params["epochs"]
+            )
 
             train_time = time.time() - train_start_time
             print(f"Training completed in {str(timedelta(seconds=int(train_time)))}")
 
             # Save model immediately after training completes
             print(f"\nSaving model to {model_path}...")
-            
+
             save_data = {
                 "performance": {
                     "train_time": train_time,
-                    "avg_epoch_time": sum(history["epoch_times"]) / len(history["epoch_times"]) if history["epoch_times"] else 0,
+                    "avg_epoch_time": sum(history["epoch_times"])
+                    / len(history["epoch_times"])
+                    if history["epoch_times"]
+                    else 0,
                 }
             }
-            
+
             if MODEL_TYPE == "simple":
-                save_data["performance"]["final_cer"] = history["overall_cer"][-1] if history["overall_cer"] else 1.0
+                save_data["performance"]["final_cer"] = (
+                    history["overall_cer"][-1] if history["overall_cer"] else 1.0
+                )
             else:
-                save_data["performance"]["final_f1"] = history["overall_f1"][-1] if history["overall_f1"] else 0.0
-            
+                save_data["performance"]["final_f1"] = (
+                    history["overall_f1"][-1] if history["overall_f1"] else 0.0
+                )
+
             if additional_model_params:
                 save_data.update(additional_model_params)
-            
+
             save_model(model, trainer, architecture, MODEL_TYPE, model_path, save_data)
 
             # Plot training history
@@ -504,12 +523,14 @@ def main(should_train=True, specific_arch=None, path=None):
             performance_metrics[architecture] = save_data["performance"].copy()
 
             print(f"Training for {architecture} complete!")
-            
+
         else:
             # Load the model instead of training
             print(f"Loading model from {model_path}...")
             try:
-                model, trainer, checkpoint = load_model(model_path, architecture, MODEL_TYPE, trainer.device)
+                model, trainer, checkpoint = load_model(
+                    model_path, architecture, MODEL_TYPE, trainer.device
+                )
 
                 # Initialize performance metrics if loading model
                 if "performance" in checkpoint:
@@ -520,7 +541,9 @@ def main(should_train=True, specific_arch=None, path=None):
                 print("Model loaded successfully.")
             except FileNotFoundError:
                 print(f"Model file {model_path} not found!")
-                print("Please train the model first (should_train=True) or specify the correct path.")
+                print(
+                    "Please train the model first (should_train=True) or specify the correct path."
+                )
                 continue  # Skip to the next architecture
             except Exception as e:
                 print(f"Error loading model: {e}")
@@ -544,7 +567,7 @@ def main(should_train=True, specific_arch=None, path=None):
                 performance_metrics[architecture].update(metrics)
             else:
                 performance_metrics[architecture] = metrics
-                
+
         except Exception as e:
             print(f"Error evaluating metrics: {e}")
             traceback.print_exc()
@@ -556,9 +579,11 @@ def main(should_train=True, specific_arch=None, path=None):
 
             # Generate more comprehensive testing with visualization
             test_and_visualize(
-                trainer, data_gen, architecture, 
-                num_samples=50 if MODEL_TYPE == "hierarchical" else 100, 
-                output_dir=arch_dir
+                trainer,
+                data_gen,
+                architecture,
+                num_samples=50 if MODEL_TYPE == "hierarchical" else 100,
+                output_dir=arch_dir,
             )
 
             # Record testing time
@@ -569,7 +594,7 @@ def main(should_train=True, specific_arch=None, path=None):
                 performance_metrics[architecture] = {"test_time": test_time}
 
             print(f"Testing completed in {str(timedelta(seconds=int(test_time)))}")
-            
+
         except Exception as e:
             print(f"\nWarning: Testing for {architecture} failed with error: {e}")
             traceback.print_exc()
@@ -582,11 +607,15 @@ def main(should_train=True, specific_arch=None, path=None):
         else:
             performance_metrics[architecture] = {"total_time": arch_time}
 
-        print(f"Total time for {architecture}: {str(timedelta(seconds=int(arch_time)))}")
+        print(
+            f"Total time for {architecture}: {str(timedelta(seconds=int(arch_time)))}"
+        )
 
         # Write individual architecture metrics to separate file
         try:
-            arch_metrics_path = os.path.join(metrics_dir, f"{architecture}_performance.json")
+            arch_metrics_path = os.path.join(
+                metrics_dir, f"{architecture}_performance.json"
+            )
             with open(arch_metrics_path, "w") as f:
                 # Convert any non-serializable values
                 arch_metrics = {}
@@ -610,13 +639,17 @@ def main(should_train=True, specific_arch=None, path=None):
         print("\n" + "=" * 80)
         print("PERFORMANCE COMPARISON")
         print("=" * 80)
-        
+
         if MODEL_TYPE == "simple":
-            print(f"{'Architecture':<12} | {'CER':<10} | {'Word Acc':<10} | {'MAD':<8} | {'RMSE':<8} | {'MAPE':<8} | {'Train Time':<15}")
+            print(
+                f"{'Architecture':<12} | {'CER':<10} | {'Word Acc':<10} | {'MAD':<8} | {'RMSE':<8} | {'MAPE':<8} | {'Train Time':<15}"
+            )
             print("-" * 80)
 
             for arch, metrics in performance_metrics.items():
-                cer = metrics.get("character_error_rate", metrics.get("final_cer", "N/A"))
+                cer = metrics.get(
+                    "character_error_rate", metrics.get("final_cer", "N/A")
+                )
                 if isinstance(cer, float):
                     cer = f"{cer:.2f}%"
 
@@ -640,10 +673,14 @@ def main(should_train=True, specific_arch=None, path=None):
                 if isinstance(train_time, (int, float)):
                     train_time = str(timedelta(seconds=int(train_time)))
 
-                print(f"{arch:<12} | {cer:<10} | {word_acc:<10} | {mad:<8} | {rmse:<8} | {mape:<8} | {train_time:<15}")
-        
+                print(
+                    f"{arch:<12} | {cer:<10} | {word_acc:<10} | {mad:<8} | {rmse:<8} | {mape:<8} | {train_time:<15}"
+                )
+
         else:  # hierarchical
-            print(f"{'Architecture':<18} | {'F1':<10} | {'Precision':<10} | {'Recall':<10} | {'Train Time':<15}")
+            print(
+                f"{'Architecture':<18} | {'F1':<10} | {'Precision':<10} | {'Recall':<10} | {'Train Time':<15}"
+            )
             print("-" * 80)
 
             for arch, metrics in performance_metrics.items():
@@ -663,7 +700,9 @@ def main(should_train=True, specific_arch=None, path=None):
                 if isinstance(train_time, (int, float)):
                     train_time = str(timedelta(seconds=int(train_time)))
 
-                print(f"{arch:<18} | {f1:<10} | {precision:<10} | {recall:<10} | {train_time:<15}")
+                print(
+                    f"{arch:<18} | {f1:<10} | {precision:<10} | {recall:<10} | {train_time:<15}"
+                )
 
         # Save performance metrics to a JSON file
         try:
@@ -686,7 +725,9 @@ def main(should_train=True, specific_arch=None, path=None):
             traceback.print_exc()
 
     print("\nTotal execution time: " + str(timedelta(seconds=int(total_time))))
-    print(f"\n{MODEL_TYPE.upper()} OCR system using real multilingual corpus data from OpenSubtitles2016")
+    print(
+        f"\n{MODEL_TYPE.upper()} OCR system using real multilingual corpus data from OpenSubtitles2016"
+    )
 
 
 if __name__ == "__main__":

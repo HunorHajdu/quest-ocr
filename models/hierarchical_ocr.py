@@ -4,7 +4,7 @@ Hierarchical OCR Model
 
 import torch
 import torch.nn as nn
-from config import NUM_CHARS, MAX_VOCAB_SIZE, MAX_NGRAM_VOCAB_SIZE
+from quest_ocr.config import NUM_CHARS, MAX_VOCAB_SIZE, MAX_NGRAM_VOCAB_SIZE
 
 
 class HierarchicalOCRModel(nn.Module):

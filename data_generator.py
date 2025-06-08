@@ -8,14 +8,13 @@ import numpy as np
 from PIL import Image, ImageDraw
 from corpus_utils import create_corpus_samplers
 from font_utils import load_font
-from config import CHAR_TO_IDX, LANGUAGE_TO_IDX
 
 logger = logging.getLogger(__name__)
 
 
 class BaseDataGenerator:
     """Base class for data generation with common functionality"""
-    
+
     def __init__(
         self,
         max_length=50,
@@ -225,6 +224,7 @@ class BaseDataGenerator:
         """Apply blur to the image"""
         try:
             from PIL import ImageFilter
+
             blur_radius = random.uniform(0.2, 0.8)
             img = img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
         except (ImportError, AttributeError):

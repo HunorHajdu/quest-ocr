@@ -4,7 +4,7 @@ Simple OCR Model
 
 import torch
 import torch.nn as nn
-from config import NUM_CHARS
+from quest_ocr.config import NUM_CHARS
 
 
 class OCRModel(nn.Module):
